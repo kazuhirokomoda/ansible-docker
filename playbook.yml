@@ -2,8 +2,8 @@
   gather_facts: no
   vars:
     docker_repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable
-    docker_compose_version: 1.12.0
-    user: ubuntu
+    docker_compose_version: 1.18.0
+    user: workuser
     ssh_pub_key: ~/.ssh/id_rsa.pub
 
   tasks:
@@ -53,7 +53,7 @@
       shell: add-apt-repository "{{ docker_repo }}"
       when: ret.rc != 0
 
-    - name: install docker
+    - name: install docker CE
       apt: name=docker-ce update_cache=yes
 
     # post-installation steps
@@ -82,36 +82,49 @@
     - name: chmod docker-compose
       file: path=/usr/local/bin/docker-compose mode=u+x,g+x,a+x
 
+
     # set and run nginx-proxy
-    - name: mkdir -p ~/nginx-proxy/certs
-      file: path="~/nginx-proxy/certs" state=directory
+    - name: mkdir -p ~/docker/nginx-proxy/certs
+      file: path="~/docker/nginx-proxy/certs" state=directory
       become: yes
       become_method: su
       become_user: "{{ user }}"
 
     - name: set nginx-proxy
-      template: src=templates/docker-compose.yml dest="~/nginx-proxy"
+      template: src=templates/docker-compose.yml dest="~/docker/nginx-proxy"
+      become: yes
+      become_method: su
+      become_user: "{{ user }}"
+
+    - name: mkdir -p ~/docker/nginx-proxy/dockerconf/nginx
+      file: path="~/docker/nginx-proxy/dockerconf/nginx" state=directory
+      become: yes
+      become_method: su
+      become_user: "{{ user }}"
+
+    - name: set Dockerfile for nginx
+      template: src=templates/Dockerfile dest="~/docker/nginx-proxy/dockerconf/nginx"
       become: yes
       become_method: su
       become_user: "{{ user }}"
 
     - name: run nginx-proxy
-#      docker_service: project_src="/home/{{ user }}/nginx-proxy" # ansible 2.1+ only
-      shell: "cd /home/{{ user }}/nginx-proxy && docker-compose up -d"
+#      docker_service: project_src="/home/{{ user }}/docker/nginx-proxy" # ansible 2.1+ only
+      shell: "cd /home/{{ user }}/docker/nginx-proxy && docker-compose up -d"
       register: ret
       changed_when: '"is up-to-date" not in ret.stderr'
 
     # set swapfile
-    - name: create swapfile
-      shell: dd if=/dev/zero of=/swapfile bs=200M count=20
-      register: ret
-      args:
-        creates: /swapfile
+#    - name: create swapfile
+#      shell: dd if=/dev/zero of=/swapfile bs=200M count=20
+#      register: ret
+#      args:
+#        creates: /swapfile
 
-    - name: chmod swapfile
-      file: path=/swapfile mode=600
-      when: ret|changed
+#    - name: chmod swapfile
+#      file: path=/swapfile mode=600
+#      when: ret|changed
 
-    - name: enable swapfile
-      shell: mkswap /swapfile && swapon /swapfile
-      when: ret|changed
+#    - name: enable swapfile
+#      shell: mkswap /swapfile && swapon /swapfile
+#      when: ret|changed

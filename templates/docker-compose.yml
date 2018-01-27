@@ -1,7 +1,9 @@
 version: '2'
+
 services:
+
   nginx-proxy:
-    image: jwilder/nginx-proxy
+    build: ./dockerconf/nginx
     container_name: nginx-proxy
     ports:
       - 80:80
@@ -12,6 +14,7 @@ services:
       - /usr/share/nginx/html
       - /var/run/docker.sock:/tmp/docker.sock:ro
     restart: always
+
   letsencrypt-nginx-proxy-companion:
     image: jrcs/letsencrypt-nginx-proxy-companion
     container_name: nginx-letsencrypt
@@ -21,3 +24,4 @@ services:
     volumes_from:
       - nginx-proxy
     restart: always
+
